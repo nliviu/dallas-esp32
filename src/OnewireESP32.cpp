@@ -10,6 +10,7 @@ OnewireESP32::OnewireESP32(uint8_t pin, uint8_t rmt_rx, uint8_t rmt_tx)
 
 OnewireESP32::~OnewireESP32()
 {
+    LOG(LL_INFO, ("Delete _ow"));
     if (_ow) {
         onewire_rmt_close(_ow);
     }
