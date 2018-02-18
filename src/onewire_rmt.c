@@ -386,7 +386,7 @@ void onewire_rmt_close(struct mgos_rmt_onewire *ow)
         ow_rmt.rx = -1;
         ow_rmt.rb = NULL;
         ow_rmt.gpio = -1;
-        LOG(LL_INFO, ("CLOSE onewire_rmt: resRx=%d, resTx=%d", (int) resRx, (int) resTx));
+        //LOG(LL_INFO, ("CLOSE onewire_rmt: resRx=%d, resTx=%d", (int) resRx, (int) resTx));
     }
 }
 
