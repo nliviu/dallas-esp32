@@ -379,10 +379,10 @@ struct mgos_rmt_onewire* onewire_rmt_create(int pin, int rmt_rx, int rmt_tx)
 void onewire_rmt_close(struct mgos_rmt_onewire *ow)
 {
     if (NULL != ow) {
-        LOG(LL_INFO, ("CLOSE onewire_rmt"));
-        rmt_driver_uninstall(ow->rmt_tx);
-        rmt_driver_uninstall(ow->rmt_rx);
+        esp_err_t resRx = rmt_driver_uninstall(ow->rmt_rx);
+        esp_err_t resTx = rmt_driver_uninstall(ow->rmt_tx);
         free((void*) ow);
+        LOG(LL_INFO, ("CLOSE onewire_rmt: resRx=%d, resTx=%d", (int) resRx, (int) resTx));
     }
 }
 
