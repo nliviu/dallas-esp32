@@ -382,6 +382,10 @@ void onewire_rmt_close(struct mgos_rmt_onewire *ow)
         esp_err_t resRx = rmt_driver_uninstall(ow->rmt_rx);
         esp_err_t resTx = rmt_driver_uninstall(ow->rmt_tx);
         free((void*) ow);
+        ow_rmt.tx = -1;
+        ow_rmt.rx = -1;
+        ow_rmt.rb = NULL;
+        ow_rmt.gpio = -1;
         LOG(LL_INFO, ("CLOSE onewire_rmt: resRx=%d, resTx=%d", (int) resRx, (int) resTx));
     }
 }
