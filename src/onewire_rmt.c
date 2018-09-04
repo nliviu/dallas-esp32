@@ -57,7 +57,7 @@ sample code bearing this copyright.
 // Branding Policy.
 //--------------------------------------------------------------------------
  */
-//https://raw.githubusercontent.com/nodemcu/nodemcu-firmware/dev-esp32/components/platform/onewire.c
+// https://raw.githubusercontent.com/nodemcu/nodemcu-firmware/dev-esp32/components/platform/onewire.c
 
 #include <stdbool.h>
 #include <mgos.h>
@@ -74,13 +74,13 @@ sample code bearing this copyright.
 // overall slot duration
 #define OW_DURATION_SLOT 75
 // write 1 slot and read slot durations [us]
-#define OW_DURATION_1_LOW    2
+#define OW_DURATION_1_LOW 2
 #define OW_DURATION_1_HIGH (OW_DURATION_SLOT - OW_DURATION_1_LOW)
 // write 0 slot durations [us]
-#define OW_DURATION_0_LOW   65
+#define OW_DURATION_0_LOW 65
 #define OW_DURATION_0_HIGH (OW_DURATION_SLOT - OW_DURATION_0_LOW)
 // sample time for read slot
-#define OW_DURATION_SAMPLE  (15-2)
+#define OW_DURATION_SAMPLE (15 - 2)
 // RX idle threshold
 // needs to be larger than any duration occurring during write slots
 #define OW_DURATION_RX_IDLE (OW_DURATION_SLOT + 2)
@@ -95,365 +95,370 @@ sample code bearing this copyright.
 // grouped information for RMT management
 
 static struct {
-    int tx, rx;
-    RingbufHandle_t rb;
-    int gpio;
+  int tx, rx;
+  RingbufHandle_t rb;
+  int gpio;
 } ow_rmt = {-1, -1, NULL, -1};
 
 // default power mode for generic write operations
 static const uint8_t owDefaultPower = 0;
 
-static bool onewire_rmt_init(int gpio_num, int rx_channel, int tx_channel)
-{
-    ow_rmt.tx = tx_channel;
-    ow_rmt.rx = rx_channel;
-    // acquire an RMT module for TX and RX each
+static bool onewire_rmt_init(int gpio_num, int rx_channel, int tx_channel) {
+  ow_rmt.tx = tx_channel;
+  ow_rmt.rx = rx_channel;
+// acquire an RMT module for TX and RX each
 #ifdef OW_DEBUG
-    ESP_LOGI("ow", "RMT TX channel: %d", ow_rmt.tx);
-    ESP_LOGI("ow", "RMT RX channel: %d", ow_rmt.rx);
+  ESP_LOGI("ow", "RMT TX channel: %d", ow_rmt.tx);
+  ESP_LOGI("ow", "RMT RX channel: %d", ow_rmt.rx);
 #endif
-    LOG(LL_INFO, ("RMT RX channel: %d, TX channel: %d", ow_rmt.rx, ow_rmt.tx));
-    rmt_config_t rmt_tx;
-    rmt_tx.channel = ow_rmt.tx;
-    rmt_tx.gpio_num = gpio_num;
-    rmt_tx.mem_block_num = 1;
-    rmt_tx.clk_div = 80;
-    rmt_tx.tx_config.loop_en = false;
-    rmt_tx.tx_config.carrier_en = false;
-    rmt_tx.tx_config.idle_level = 1;
-    rmt_tx.tx_config.idle_output_en = true;
-    rmt_tx.rmt_mode = RMT_MODE_TX;
-    if (rmt_config(&rmt_tx) == ESP_OK) {
-        if (rmt_driver_install(rmt_tx.channel, 0, ESP_INTR_FLAG_LOWMED | ESP_INTR_FLAG_IRAM | ESP_INTR_FLAG_SHARED) == ESP_OK) {
-            rmt_config_t rmt_rx;
-            rmt_rx.channel = ow_rmt.rx;
-            rmt_rx.gpio_num = gpio_num;
-            rmt_rx.clk_div = 80;
-            rmt_rx.mem_block_num = 1;
-            rmt_rx.rmt_mode = RMT_MODE_RX;
-            rmt_rx.rx_config.filter_en = true;
-            rmt_rx.rx_config.filter_ticks_thresh = 30;
-            rmt_rx.rx_config.idle_threshold = OW_DURATION_RX_IDLE;
-            if (rmt_config(&rmt_rx) == ESP_OK) {
-                if (rmt_driver_install(rmt_rx.channel, 512, ESP_INTR_FLAG_LOWMED | ESP_INTR_FLAG_IRAM | ESP_INTR_FLAG_SHARED) == ESP_OK) {
-                    rmt_get_ringbuf_handle(ow_rmt.rx, &ow_rmt.rb);
-                    // don't set ow_rmt.gpio here
-                    // -1 forces a full pin set procedure in first call to onewire_rmt_attach_pin()
-                    return true;
-                }
-            }
-            rmt_driver_uninstall(rmt_tx.channel);
+  LOG(LL_INFO, ("RMT RX channel: %d, TX channel: %d", ow_rmt.rx, ow_rmt.tx));
+  rmt_config_t rmt_tx;
+  rmt_tx.channel = ow_rmt.tx;
+  rmt_tx.gpio_num = gpio_num;
+  rmt_tx.mem_block_num = 1;
+  rmt_tx.clk_div = 80;
+  rmt_tx.tx_config.loop_en = false;
+  rmt_tx.tx_config.carrier_en = false;
+  rmt_tx.tx_config.idle_level = 1;
+  rmt_tx.tx_config.idle_output_en = true;
+  rmt_tx.rmt_mode = RMT_MODE_TX;
+  if (rmt_config(&rmt_tx) == ESP_OK) {
+    if (rmt_driver_install(rmt_tx.channel, 0,
+                           ESP_INTR_FLAG_LOWMED | ESP_INTR_FLAG_IRAM |
+                               ESP_INTR_FLAG_SHARED) == ESP_OK) {
+      rmt_config_t rmt_rx;
+      rmt_rx.channel = ow_rmt.rx;
+      rmt_rx.gpio_num = gpio_num;
+      rmt_rx.clk_div = 80;
+      rmt_rx.mem_block_num = 1;
+      rmt_rx.rmt_mode = RMT_MODE_RX;
+      rmt_rx.rx_config.filter_en = true;
+      rmt_rx.rx_config.filter_ticks_thresh = 30;
+      rmt_rx.rx_config.idle_threshold = OW_DURATION_RX_IDLE;
+      if (rmt_config(&rmt_rx) == ESP_OK) {
+        if (rmt_driver_install(rmt_rx.channel, 512,
+                               ESP_INTR_FLAG_LOWMED | ESP_INTR_FLAG_IRAM |
+                                   ESP_INTR_FLAG_SHARED) == ESP_OK) {
+          rmt_get_ringbuf_handle(ow_rmt.rx, &ow_rmt.rb);
+          // don't set ow_rmt.gpio here
+          // -1 forces a full pin set procedure in first call to
+          // onewire_rmt_attach_pin()
+          return true;
         }
+      }
+      rmt_driver_uninstall(rmt_tx.channel);
     }
+  }
 
-    return false;
+  return false;
 }
-// check rmt TX&RX channel assignment and eventually attach them to the requested pin
+// check rmt TX&RX channel assignment and eventually attach them to the
+// requested pin
 
 // flush any pending/spurious traces from the RX channel
 
-static void onewire_flush_rmt_rx_buf(void)
-{
-    void *p;
-    size_t s;
+static void onewire_flush_rmt_rx_buf(void) {
+  void *p;
+  size_t s;
 
-    while ((p = xRingbufferReceive(ow_rmt.rb, &s, 0))) {
-        vRingbufferReturnItem(ow_rmt.rb, p);
-    }
+  while ((p = xRingbufferReceive(ow_rmt.rb, &s, 0))) {
+    vRingbufferReturnItem(ow_rmt.rb, p);
+  }
 }
 
-// check rmt TX&RX channel assignment and eventually attach them to the requested pin
+// check rmt TX&RX channel assignment and eventually attach them to the
+// requested pin
 
-static bool onewire_rmt_attach_pin(int gpio_num)
-{
-    if (ow_rmt.tx < 0 || ow_rmt.rx < 0)
-        return false;
+static bool onewire_rmt_attach_pin(int gpio_num) {
+  if (ow_rmt.tx < 0 || ow_rmt.rx < 0) return false;
 
-    if (gpio_num != ow_rmt.gpio) {
-        // attach GPIO to previous pin
-        if (gpio_num < 32) {
-            GPIO.enable_w1ts = (0x1 << gpio_num);
-        } else {
-            GPIO.enable1_w1ts.data = (0x1 << (gpio_num - 32));
-        }
-        if (ow_rmt.gpio >= 0) {
-            gpio_matrix_out(ow_rmt.gpio, SIG_GPIO_OUT_IDX, 0, 0);
-        }
-
-        // attach RMT channels to new gpio pin
-        // ATTENTION: set pin for rx first since gpio_output_disable() will
-        //            remove rmt output signal in matrix!
-        rmt_set_pin(ow_rmt.rx, RMT_MODE_RX, gpio_num);
-        rmt_set_pin(ow_rmt.tx, RMT_MODE_TX, gpio_num);
-        // force pin direction to input to enable path to RX channel
-        PIN_INPUT_ENABLE(GPIO_PIN_MUX_REG[gpio_num]);
-
-        ow_rmt.gpio = gpio_num;
-    }
-
-    return true;
-}
-
-static rmt_item32_t onewire_encode_write_slot(uint8_t val)
-{
-    rmt_item32_t item;
-
-    item.level0 = 0;
-    item.level1 = 1;
-    if (val) {
-        // write "1" slot
-        item.duration0 = OW_DURATION_1_LOW;
-        item.duration1 = OW_DURATION_1_HIGH;
+  if (gpio_num != ow_rmt.gpio) {
+    // attach GPIO to previous pin
+    if (gpio_num < 32) {
+      GPIO.enable_w1ts = (0x1 << gpio_num);
     } else {
-        // write "0" slot
-        item.duration0 = OW_DURATION_0_LOW;
-        item.duration1 = OW_DURATION_0_HIGH;
+      GPIO.enable1_w1ts.data = (0x1 << (gpio_num - 32));
+    }
+    if (ow_rmt.gpio >= 0) {
+      gpio_matrix_out(ow_rmt.gpio, SIG_GPIO_OUT_IDX, 0, 0);
     }
 
-    return item;
+    // attach RMT channels to new gpio pin
+    // ATTENTION: set pin for rx first since gpio_output_disable() will
+    //            remove rmt output signal in matrix!
+    rmt_set_pin(ow_rmt.rx, RMT_MODE_RX, gpio_num);
+    rmt_set_pin(ow_rmt.tx, RMT_MODE_TX, gpio_num);
+    // force pin direction to input to enable path to RX channel
+    PIN_INPUT_ENABLE(GPIO_PIN_MUX_REG[gpio_num]);
+
+    ow_rmt.gpio = gpio_num;
+  }
+
+  return true;
 }
 
-static bool onewire_write_bits(uint8_t gpio_num, uint8_t data, uint8_t num, uint8_t power)
-{
-    rmt_item32_t tx_items[num + 1];
+static rmt_item32_t onewire_encode_write_slot(uint8_t val) {
+  rmt_item32_t item;
 
-    if (num > 8) {
-        return false;
-    }
+  item.level0 = 0;
+  item.level1 = 1;
+  if (val) {
+    // write "1" slot
+    item.duration0 = OW_DURATION_1_LOW;
+    item.duration1 = OW_DURATION_1_HIGH;
+  } else {
+    // write "0" slot
+    item.duration0 = OW_DURATION_0_LOW;
+    item.duration1 = OW_DURATION_0_HIGH;
+  }
 
-    if (onewire_rmt_attach_pin(gpio_num) != true) {
-        return false;
-    }
-
-    if (power) {
-        // apply strong driver to power the bus
-        OW_POWER(gpio_num);
-    } else {
-        // switch to open-drain mode, bus is powered by external pull-up
-        OW_DEPOWER(gpio_num);
-    }
-
-    // write requested bits as pattern to TX buffer
-    for (int i = 0; i < num; i++) {
-        tx_items[i] = onewire_encode_write_slot(data & 0x01);
-        data >>= 1;
-    }
-    // end marker
-    tx_items[num].level0 = 1;
-    tx_items[num].duration0 = 0;
-
-    if (rmt_write_items(ow_rmt.tx, tx_items, num + 1, true) == ESP_OK) {
-        return true;
-    } else {
-        return false;
-    }
+  return item;
 }
 
-static rmt_item32_t onewire_encode_read_slot(void)
-{
-    rmt_item32_t item;
+static bool onewire_write_bits(uint8_t gpio_num, uint8_t data, uint8_t num,
+                               uint8_t power) {
+  rmt_item32_t tx_items[num + 1];
 
-    // construct pattern for a single read time slot
-    item.level0 = 0;
-    item.duration0 = OW_DURATION_1_LOW; // shortly force 0
-    item.level1 = 1;
-    item.duration1 = OW_DURATION_1_HIGH; // release high and finish slot
+  if (num > 8) {
+    return false;
+  }
 
-    return item;
-}
+  if (onewire_rmt_attach_pin(gpio_num) != true) {
+    return false;
+  }
 
-static bool onewire_read_bits(uint8_t gpio_num, uint8_t *data, uint8_t num)
-{
-    rmt_item32_t tx_items[num + 1];
-    uint8_t read_data = 0;
-    int res = true;
-
-    if (num > 8) {
-        return false;
-    }
-
-    if (onewire_rmt_attach_pin(gpio_num) != true) {
-        return false;
-    }
-
+  if (power) {
+    // apply strong driver to power the bus
+    OW_POWER(gpio_num);
+  } else {
+    // switch to open-drain mode, bus is powered by external pull-up
     OW_DEPOWER(gpio_num);
+  }
 
-    // generate requested read slots
-    for (int i = 0; i < num; i++) {
-        tx_items[i] = onewire_encode_read_slot();
-    }
-    // end marker
-    tx_items[num].level0 = 1;
-    tx_items[num].duration0 = 0;
+  // write requested bits as pattern to TX buffer
+  for (int i = 0; i < num; i++) {
+    tx_items[i] = onewire_encode_write_slot(data & 0x01);
+    data >>= 1;
+  }
+  // end marker
+  tx_items[num].level0 = 1;
+  tx_items[num].duration0 = 0;
 
-    onewire_flush_rmt_rx_buf();
-    rmt_rx_start(ow_rmt.rx, true);
-    if (rmt_write_items(ow_rmt.tx, tx_items, num + 1, true) == ESP_OK) {
-        size_t rx_size;
-        rmt_item32_t* rx_items = (rmt_item32_t *) xRingbufferReceive(ow_rmt.rb, &rx_size, portMAX_DELAY);
+  if (rmt_write_items(ow_rmt.tx, tx_items, num + 1, true) == ESP_OK) {
+    return true;
+  } else {
+    return false;
+  }
+}
 
-        if (rx_items) {
+static rmt_item32_t onewire_encode_read_slot(void) {
+  rmt_item32_t item;
+
+  // construct pattern for a single read time slot
+  item.level0 = 0;
+  item.duration0 = OW_DURATION_1_LOW;  // shortly force 0
+  item.level1 = 1;
+  item.duration1 = OW_DURATION_1_HIGH;  // release high and finish slot
+
+  return item;
+}
+
+static bool onewire_read_bits(uint8_t gpio_num, uint8_t *data, uint8_t num) {
+  rmt_item32_t tx_items[num + 1];
+  uint8_t read_data = 0;
+  int res = true;
+
+  if (num > 8) {
+    return false;
+  }
+
+  if (onewire_rmt_attach_pin(gpio_num) != true) {
+    return false;
+  }
+
+  OW_DEPOWER(gpio_num);
+
+  // generate requested read slots
+  for (int i = 0; i < num; i++) {
+    tx_items[i] = onewire_encode_read_slot();
+  }
+  // end marker
+  tx_items[num].level0 = 1;
+  tx_items[num].duration0 = 0;
+
+  onewire_flush_rmt_rx_buf();
+  rmt_rx_start(ow_rmt.rx, true);
+  if (rmt_write_items(ow_rmt.tx, tx_items, num + 1, true) == ESP_OK) {
+    size_t rx_size;
+    rmt_item32_t *rx_items =
+        (rmt_item32_t *) xRingbufferReceive(ow_rmt.rb, &rx_size, portMAX_DELAY);
+
+    if (rx_items) {
 #ifdef OW_DEBUG
-            for (int i = 0; i < rx_size / 4; i++) {
-                ESP_LOGI("ow", "level: %d, duration %d", rx_items[i].level0, rx_items[i].duration0);
-                ESP_LOGI("ow", "level: %d, duration %d", rx_items[i].level1, rx_items[i].duration1);
-            }
+      for (int i = 0; i < rx_size / 4; i++) {
+        ESP_LOGI("ow", "level: %d, duration %d", rx_items[i].level0,
+                 rx_items[i].duration0);
+        ESP_LOGI("ow", "level: %d, duration %d", rx_items[i].level1,
+                 rx_items[i].duration1);
+      }
 #endif
-            if (rx_size >= num * sizeof ( rmt_item32_t)) {
-                for (int i = 0; i < num; i++) {
-                    read_data >>= 1;
-                    // parse signal and identify logical bit
-                    if (rx_items[i].level1 == 1) {
-                        if ((rx_items[i].level0 == 0) && (rx_items[i].duration0 < OW_DURATION_SAMPLE)) {
-                            // rising edge occured before 15us -> bit 1
-                            read_data |= 0x80;
-                        }
-                    }
-                }
-                read_data >>= 8 - num;
+      if (rx_size >= num * sizeof(rmt_item32_t)) {
+        for (int i = 0; i < num; i++) {
+          read_data >>= 1;
+          // parse signal and identify logical bit
+          if (rx_items[i].level1 == 1) {
+            if ((rx_items[i].level0 == 0) &&
+                (rx_items[i].duration0 < OW_DURATION_SAMPLE)) {
+              // rising edge occured before 15us -> bit 1
+              read_data |= 0x80;
             }
-
-            vRingbufferReturnItem(ow_rmt.rb, (void *) rx_items);
-        } else {
-            // time out occurred, this indicates an unconnected / misconfigured bus
-            res = false;
+          }
         }
+        read_data >>= 8 - num;
+      }
 
+      vRingbufferReturnItem(ow_rmt.rb, (void *) rx_items);
     } else {
-        // error in tx channel
-        res = false;
+      // time out occurred, this indicates an unconnected / misconfigured bus
+      res = false;
     }
 
-    rmt_rx_stop(ow_rmt.rx);
+  } else {
+    // error in tx channel
+    res = false;
+  }
 
-    *data = read_data;
-    return res;
+  rmt_rx_stop(ow_rmt.rx);
+
+  *data = read_data;
+  return res;
 }
 
 struct onewire_search_state {
-    int search_mode;
-    int last_device;
-    int last_discrepancy;
-    int last_family_discrepancy;
-    uint8_t rom[8];
-    uint8_t crc8;
+  int search_mode;
+  int last_device;
+  int last_discrepancy;
+  int last_family_discrepancy;
+  uint8_t rom[8];
+  uint8_t crc8;
 };
 
 typedef struct {
-    uint8_t power;
-    uint8_t LastDeviceFlag;
-    uint8_t LastDiscrepancy;
-    uint8_t LastFamilyDiscrepancy;
-    unsigned char ROM_NO[8];
+  uint8_t power;
+  uint8_t LastDeviceFlag;
+  uint8_t LastDiscrepancy;
+  uint8_t LastFamilyDiscrepancy;
+  unsigned char ROM_NO[8];
 } platform_onewire_bus_t;
 
 struct mgos_rmt_onewire {
-    int pin;
-    uint8_t *res_rom;
-    //struct onewire_search_state sst;
-    platform_onewire_bus_t sst;
-    int rmt_rx;
-    int rmt_tx;
+  int pin;
+  uint8_t *res_rom;
+  // struct onewire_search_state sst;
+  platform_onewire_bus_t sst;
+  int rmt_rx;
+  int rmt_tx;
 };
 
-struct mgos_rmt_onewire* onewire_rmt_create(int pin, int rmt_rx, int rmt_tx)
-{
-    int rx = rmt_rx; //mgos_sys_config_get_onewire_rmt_rx_channel();
-    int tx = rmt_tx; //mgos_sys_config_get_onewire_rmt_tx_channel();
-    if (-1 == rx || -1 == tx) {
-        LOG(LL_INFO, ("onewire_rmt could not start - rx and/or tx channel not set."));
-        return NULL;
-    }
-    bool driverOk = onewire_rmt_init(pin, rx, tx);
-    if (false == driverOk) {
-        LOG(LL_INFO, ("onewire_rmt could not start - rmt device could not be configured."));
-        return NULL;
-    }
-    struct mgos_rmt_onewire* ow = (struct mgos_rmt_onewire*) calloc(1, sizeof (struct mgos_rmt_onewire));
-    ow->pin = pin;
-    ow->rmt_rx = rmt_rx;
-    ow->rmt_tx = rmt_tx;
-    return ow;
+struct mgos_rmt_onewire *onewire_rmt_create(int pin, int rmt_rx, int rmt_tx) {
+  int rx = rmt_rx;  // mgos_sys_config_get_onewire_rmt_rx_channel();
+  int tx = rmt_tx;  // mgos_sys_config_get_onewire_rmt_tx_channel();
+  if (-1 == rx || -1 == tx) {
+    LOG(LL_INFO,
+        ("onewire_rmt could not start - rx and/or tx channel not set."));
+    return NULL;
+  }
+  bool driverOk = onewire_rmt_init(pin, rx, tx);
+  if (false == driverOk) {
+    LOG(LL_INFO,
+        ("onewire_rmt could not start - rmt device could not be configured."));
+    return NULL;
+  }
+  struct mgos_rmt_onewire *ow =
+      (struct mgos_rmt_onewire *) calloc(1, sizeof(struct mgos_rmt_onewire));
+  ow->pin = pin;
+  ow->rmt_rx = rmt_rx;
+  ow->rmt_tx = rmt_tx;
+  return ow;
 }
 
-void onewire_rmt_close(struct mgos_rmt_onewire *ow)
-{
-    if (NULL != ow) {
-        esp_err_t resRx = rmt_driver_uninstall(ow->rmt_rx);
-        esp_err_t resTx = rmt_driver_uninstall(ow->rmt_tx);
-        free((void*) ow);
-        ow_rmt.tx = -1;
-        ow_rmt.rx = -1;
-        ow_rmt.rb = NULL;
-        ow_rmt.gpio = -1;
-        //LOG(LL_INFO, ("CLOSE onewire_rmt: resRx=%d, resTx=%d", (int) resRx, (int) resTx));
-    }
+void onewire_rmt_close(struct mgos_rmt_onewire *ow) {
+  if (NULL != ow) {
+    esp_err_t resRx = rmt_driver_uninstall(ow->rmt_rx);
+    esp_err_t resTx = rmt_driver_uninstall(ow->rmt_tx);
+    free((void *) ow);
+    ow_rmt.tx = -1;
+    ow_rmt.rx = -1;
+    ow_rmt.rb = NULL;
+    ow_rmt.gpio = -1;
+    // LOG(LL_INFO, ("CLOSE onewire_rmt: resRx=%d, resTx=%d", (int) resRx, (int)
+    // resTx));
+  }
 }
 
-bool onewire_rmt_reset(struct mgos_rmt_onewire *ow)
-{
-    (void) ow;
-    rmt_item32_t tx_items[1];
-    bool _presence = false;
-    int res = true;
-    int gpio_num = ow->pin;
+bool onewire_rmt_reset(struct mgos_rmt_onewire *ow) {
+  (void) ow;
+  rmt_item32_t tx_items[1];
+  bool _presence = false;
+  int res = true;
+  int gpio_num = ow->pin;
 
-    if (onewire_rmt_attach_pin(gpio_num) != true)
-        return false;
+  if (onewire_rmt_attach_pin(gpio_num) != true) return false;
 
-    OW_DEPOWER(gpio_num);
+  OW_DEPOWER(gpio_num);
 
-    tx_items[0].duration0 = OW_DURATION_RESET;
-    tx_items[0].level0 = 0;
-    tx_items[0].duration1 = 0;
-    tx_items[0].level1 = 1;
+  tx_items[0].duration0 = OW_DURATION_RESET;
+  tx_items[0].level0 = 0;
+  tx_items[0].duration1 = 0;
+  tx_items[0].level1 = 1;
 
-    uint16_t old_rx_thresh;
-    rmt_get_rx_idle_thresh(ow_rmt.rx, &old_rx_thresh);
-    rmt_set_rx_idle_thresh(ow_rmt.rx, OW_DURATION_RESET + 60);
+  uint16_t old_rx_thresh;
+  rmt_get_rx_idle_thresh(ow_rmt.rx, &old_rx_thresh);
+  rmt_set_rx_idle_thresh(ow_rmt.rx, OW_DURATION_RESET + 60);
 
-    onewire_flush_rmt_rx_buf();
-    rmt_rx_start(ow_rmt.rx, true);
-    if (rmt_write_items(ow_rmt.tx, tx_items, 1, true) == ESP_OK) {
+  onewire_flush_rmt_rx_buf();
+  rmt_rx_start(ow_rmt.rx, true);
+  if (rmt_write_items(ow_rmt.tx, tx_items, 1, true) == ESP_OK) {
+    size_t rx_size;
+    rmt_item32_t *rx_items = (rmt_item32_t *) xRingbufferReceive(
+        ow_rmt.rb, &rx_size, 100 / portTICK_PERIOD_MS);
 
-        size_t rx_size;
-        rmt_item32_t* rx_items = (rmt_item32_t *) xRingbufferReceive(ow_rmt.rb, &rx_size, 100 / portTICK_PERIOD_MS);
-
-        if (rx_items) {
-            if (rx_size >= 1 * sizeof ( rmt_item32_t)) {
-
+    if (rx_items) {
+      if (rx_size >= 1 * sizeof(rmt_item32_t)) {
 #ifdef OW_DEBUG
-                for (int i = 0; i < rx_size / 4; i++) {
-                    ESP_LOGI("ow", "level: %d, duration %d", rx_items[i].level0, rx_items[i].duration0);
-                    ESP_LOGI("ow", "level: %d, duration %d", rx_items[i].level1, rx_items[i].duration1);
-                }
+        for (int i = 0; i < rx_size / 4; i++) {
+          ESP_LOGI("ow", "level: %d, duration %d", rx_items[i].level0,
+                   rx_items[i].duration0);
+          ESP_LOGI("ow", "level: %d, duration %d", rx_items[i].level1,
+                   rx_items[i].duration1);
+        }
 #endif
 
-                // parse signal and search for presence pulse
-                if ((rx_items[0].level0 == 0) && (rx_items[0].duration0 >= OW_DURATION_RESET - 2))
-                    if ((rx_items[0].level1 == 1) && (rx_items[0].duration1 > 0))
-                        if (rx_items[1].level0 == 0)
-                            _presence = true;
-            }
+        // parse signal and search for presence pulse
+        if ((rx_items[0].level0 == 0) &&
+            (rx_items[0].duration0 >= OW_DURATION_RESET - 2))
+          if ((rx_items[0].level1 == 1) && (rx_items[0].duration1 > 0))
+            if (rx_items[1].level0 == 0) _presence = true;
+      }
 
-            vRingbufferReturnItem(ow_rmt.rb, (void *) rx_items);
-        } else {
-            // time out occurred, this indicates an unconnected / misconfigured bus
-            res = false;
-        }
-
+      vRingbufferReturnItem(ow_rmt.rb, (void *) rx_items);
     } else {
-        // error in tx channel
-        res = false;
+      // time out occurred, this indicates an unconnected / misconfigured bus
+      res = false;
     }
 
-    rmt_rx_stop(ow_rmt.rx);
-    rmt_set_rx_idle_thresh(ow_rmt.rx, old_rx_thresh);
+  } else {
+    // error in tx channel
+    res = false;
+  }
 
-    //*presence = _presence;
-    //return res;
-    (void) res;
-    return _presence;
+  rmt_rx_stop(ow_rmt.rx);
+  rmt_set_rx_idle_thresh(ow_rmt.rx, old_rx_thresh);
+
+  //*presence = _presence;
+  // return res;
+  (void) res;
+  return _presence;
 }
 
 // This table comes from Dallas sample code where it is freely reusable,
@@ -495,17 +500,17 @@ uint8_t onewire_rmt_crc8(const uint8_t *rom, int len)
  * Note if no devices of the desired family are currently
  * on the 1-Wire, then another type will be found.
  */
-void onewire_rmt_target_setup(struct mgos_rmt_onewire *ow, const uint8_t family_code)
-{
-    // set the search state to find SearchFamily type devices
-    ow->sst.ROM_NO[0] = family_code;
-    uint8_t i;
-    for (i = 1; i < 8; i++) {
-        ow->sst.ROM_NO[i] = 0;
-    }
-    ow->sst.LastDiscrepancy = 64;
-    ow->sst.LastFamilyDiscrepancy = 0;
-    ow->sst.LastDeviceFlag = false;
+void onewire_rmt_target_setup(struct mgos_rmt_onewire *ow,
+                              const uint8_t family_code) {
+  // set the search state to find SearchFamily type devices
+  ow->sst.ROM_NO[0] = family_code;
+  uint8_t i;
+  for (i = 1; i < 8; i++) {
+    ow->sst.ROM_NO[i] = 0;
+  }
+  ow->sst.LastDiscrepancy = 64;
+  ow->sst.LastFamilyDiscrepancy = 0;
+  ow->sst.LastDeviceFlag = false;
 }
 
 //
@@ -525,195 +530,188 @@ void onewire_rmt_target_setup(struct mgos_rmt_onewire *ow, const uint8_t family_
 //        false : device not found, end of search
 //
 
-bool onewire_rmt_next(struct mgos_rmt_onewire *ow, uint8_t *rom, int mode)
-{
-    (void) mode;
-    uint8_t id_bit_number;
-    uint8_t last_zero, rom_byte_number, search_result;
-    uint8_t id_bit, cmp_id_bit;
+bool onewire_rmt_next(struct mgos_rmt_onewire *ow, uint8_t *rom, int mode) {
+  (void) mode;
+  uint8_t id_bit_number;
+  uint8_t last_zero, rom_byte_number, search_result;
+  uint8_t id_bit, cmp_id_bit;
 
-    unsigned char rom_byte_mask, search_direction;
+  unsigned char rom_byte_mask, search_direction;
 
-    // initialize for search
-    id_bit_number = 1;
-    last_zero = 0;
-    rom_byte_number = 0;
-    rom_byte_mask = 1;
-    search_result = 0;
+  // initialize for search
+  id_bit_number = 1;
+  last_zero = 0;
+  rom_byte_number = 0;
+  rom_byte_mask = 1;
+  search_result = 0;
 
-    // if the last call was not the last one
-    if (!ow->sst.LastDeviceFlag) {
-        // 1-Wire reset
-        //uint8_t presence;
-        if (onewire_rmt_reset(ow) != true) {
-            // reset the search
-            ow->sst.LastDiscrepancy = 0;
-            ow->sst.LastDeviceFlag = false;
-            ow->sst.LastFamilyDiscrepancy = 0;
-            return false;
-        }
+  // if the last call was not the last one
+  if (!ow->sst.LastDeviceFlag) {
+    // 1-Wire reset
+    // uint8_t presence;
+    if (onewire_rmt_reset(ow) != true) {
+      // reset the search
+      ow->sst.LastDiscrepancy = 0;
+      ow->sst.LastDeviceFlag = false;
+      ow->sst.LastFamilyDiscrepancy = 0;
+      return false;
+    }
 
-        // issue the search command
-        onewire_write_bits(ow->pin, 0xF0, 8, owDefaultPower);
+    // issue the search command
+    onewire_write_bits(ow->pin, 0xF0, 8, owDefaultPower);
 
-        // loop to do the search
-        do {
-            // read a bit and its complement
-            if (onewire_read_bits(ow->pin, &id_bit, 1) != true) {
-                break;
+    // loop to do the search
+    do {
+      // read a bit and its complement
+      if (onewire_read_bits(ow->pin, &id_bit, 1) != true) {
+        break;
+      }
+      if (onewire_read_bits(ow->pin, &cmp_id_bit, 1) != true) {
+        break;
+      }
+
+      // check for no devices on 1-wire
+      if ((id_bit == 1) && (cmp_id_bit == 1)) {
+        break;
+      } else {
+        // all devices coupled have 0 or 1
+        if (id_bit != cmp_id_bit)
+          search_direction = id_bit;  // bit write value for search
+        else {
+          // if this discrepancy if before the Last Discrepancy
+          // on a previous next then pick the same as last time
+          if (id_bit_number < ow->sst.LastDiscrepancy)
+            search_direction =
+                ((ow->sst.ROM_NO[rom_byte_number] & rom_byte_mask) > 0);
+          else
+            // if equal to last pick 1, if not then pick 0
+            search_direction = (id_bit_number == ow->sst.LastDiscrepancy);
+
+          // if 0 was picked then record its position in LastZero
+          if (search_direction == 0) {
+            last_zero = id_bit_number;
+
+            // check for Last discrepancy in family
+            if (last_zero < 9) {
+              ow->sst.LastFamilyDiscrepancy = last_zero;
             }
-            if (onewire_read_bits(ow->pin, &cmp_id_bit, 1) != true) {
-                break;
-            }
-
-            // check for no devices on 1-wire
-            if ((id_bit == 1) && (cmp_id_bit == 1)) {
-                break;
-            } else {
-                // all devices coupled have 0 or 1
-                if (id_bit != cmp_id_bit)
-                    search_direction = id_bit; // bit write value for search
-                else {
-                    // if this discrepancy if before the Last Discrepancy
-                    // on a previous next then pick the same as last time
-                    if (id_bit_number < ow->sst.LastDiscrepancy)
-                        search_direction = ((ow->sst.ROM_NO[rom_byte_number] & rom_byte_mask) > 0);
-                    else
-                        // if equal to last pick 1, if not then pick 0
-                        search_direction = (id_bit_number == ow->sst.LastDiscrepancy);
-
-                    // if 0 was picked then record its position in LastZero
-                    if (search_direction == 0) {
-                        last_zero = id_bit_number;
-
-                        // check for Last discrepancy in family
-                        if (last_zero < 9) {
-                            ow->sst.LastFamilyDiscrepancy = last_zero;
-                        }
-                    }
-                }
-
-                // set or clear the bit in the ROM byte rom_byte_number
-                // with mask rom_byte_mask
-                if (search_direction == 1) {
-                    ow->sst.ROM_NO[rom_byte_number] |= rom_byte_mask;
-                } else {
-                    ow->sst.ROM_NO[rom_byte_number] &= ~rom_byte_mask;
-                }
-
-                // serial number search direction write bit
-                onewire_write_bits(ow->pin, search_direction, 1, owDefaultPower);
-
-                // increment the byte counter id_bit_number
-                // and shift the mask rom_byte_mask
-                id_bit_number++;
-                rom_byte_mask <<= 1;
-
-                // if the mask is 0 then go to new SerialNum byte rom_byte_number and reset mask
-                if (rom_byte_mask == 0) {
-                    rom_byte_number++;
-                    rom_byte_mask = 1;
-                }
-            }
-        } while (rom_byte_number < 8); // loop until through all ROM bytes 0-7
-
-        // if the search was successful then
-        if (!(id_bit_number < 65)) {
-            // search successful so set LastDiscrepancy,LastDeviceFlag,search_result
-            ow->sst.LastDiscrepancy = last_zero;
-
-            // check for last device
-            if (ow->sst.LastDiscrepancy == 0) {
-                ow->sst.LastDeviceFlag = true;
-            }
-
-            search_result = true;
+          }
         }
-    }
 
-    // if no device found then reset counters so next 'search' will be like a first
-    if (!search_result || !ow->sst.ROM_NO[0]) {
-        ow->sst.LastDiscrepancy = 0;
-        ow->sst.LastDeviceFlag = false;
-        ow->sst.LastFamilyDiscrepancy = 0;
-        search_result = false;
-    } else {
-        for (rom_byte_number = 0; rom_byte_number < 8; rom_byte_number++) {
-            rom[rom_byte_number] = ow->sst.ROM_NO[rom_byte_number];
+        // set or clear the bit in the ROM byte rom_byte_number
+        // with mask rom_byte_mask
+        if (search_direction == 1) {
+          ow->sst.ROM_NO[rom_byte_number] |= rom_byte_mask;
+        } else {
+          ow->sst.ROM_NO[rom_byte_number] &= ~rom_byte_mask;
         }
-    }
-    return search_result;
-}
 
-void onewire_rmt_select(struct mgos_rmt_onewire *ow, const uint8_t *rom)
-{
-    //onewire_write(ow, 0x55);
-    onewire_write_bits(ow->pin, 0x55, 8, owDefaultPower);
-    for (int i = 0; i < 8; i++) {
-        //onewire_write(ow, rom[i]);
-        onewire_write_bits(ow->pin, rom[i], 8, owDefaultPower);
-    }
-}
+        // serial number search direction write bit
+        onewire_write_bits(ow->pin, search_direction, 1, owDefaultPower);
 
-void onewire_rmt_skip(struct mgos_rmt_onewire *ow)
-{
-    //onewire_write(ow, 0xCC);
-    onewire_write_bits(ow->pin, 0xCC, 8, owDefaultPower);
-}
+        // increment the byte counter id_bit_number
+        // and shift the mask rom_byte_mask
+        id_bit_number++;
+        rom_byte_mask <<= 1;
 
-void onewire_rmt_search_clean(struct mgos_rmt_onewire *ow)
-{
-    memset(&ow->sst, 0, sizeof (ow->sst));
-}
-
-bool onewire_rmt_read_bit(struct mgos_rmt_onewire *ow)
-{
-    uint8_t bit = 0;
-    if (onewire_read_bits(ow->pin, &bit, 1)) {
-        return bit & 0x01;
-    }
-    return false;
-}
-
-uint8_t onewire_rmt_read(struct mgos_rmt_onewire *ow)
-{
-    uint8_t res = 0;
-    if (onewire_read_bits(ow->pin, &res, 8) != true) {
-        return 0;
-    }
-    return res;
-}
-
-void onewire_rmt_read_bytes(struct mgos_rmt_onewire *ow, uint8_t *buf, int len)
-{
-
-    for (uint16_t i = 0; i < len; i++) {
-        if (onewire_read_bits(ow->pin, buf, 8) != true) {
-            return; //PLATFORM_ERR;
+        // if the mask is 0 then go to new SerialNum byte rom_byte_number and
+        // reset mask
+        if (rom_byte_mask == 0) {
+          rom_byte_number++;
+          rom_byte_mask = 1;
         }
-        buf++;
+      }
+    } while (rom_byte_number < 8);  // loop until through all ROM bytes 0-7
+
+    // if the search was successful then
+    if (!(id_bit_number < 65)) {
+      // search successful so set LastDiscrepancy,LastDeviceFlag,search_result
+      ow->sst.LastDiscrepancy = last_zero;
+
+      // check for last device
+      if (ow->sst.LastDiscrepancy == 0) {
+        ow->sst.LastDeviceFlag = true;
+      }
+
+      search_result = true;
     }
-}
+  }
 
-void onewire_rmt_write_bit(struct mgos_rmt_onewire *ow, int bit)
-{
-    uint8_t data = 0x01 & bit;
-    onewire_write_bits(ow->pin, data, 1, owDefaultPower);
-}
-
-void onewire_rmt_write(struct mgos_rmt_onewire *ow, const uint8_t data)
-{
-    onewire_write_bits(ow->pin, data, 8, owDefaultPower);
-}
-
-void onewire_rmt_write_bytes(struct mgos_rmt_onewire *ow, const uint8_t *buf, int len)
-{
-    for (uint16_t i = 0; i < len; i++) {
-        if (onewire_write_bits(ow->pin, buf[i], 8, owDefaultPower) != true) {
-            return; //PLATFORM_ERR;
-        }
+  // if no device found then reset counters so next 'search' will be like a
+  // first
+  if (!search_result || !ow->sst.ROM_NO[0]) {
+    ow->sst.LastDiscrepancy = 0;
+    ow->sst.LastDeviceFlag = false;
+    ow->sst.LastFamilyDiscrepancy = 0;
+    search_result = false;
+  } else {
+    for (rom_byte_number = 0; rom_byte_number < 8; rom_byte_number++) {
+      rom[rom_byte_number] = ow->sst.ROM_NO[rom_byte_number];
     }
-
-    return; // PLATFORM_OK;
+  }
+  return search_result;
 }
 
+void onewire_rmt_select(struct mgos_rmt_onewire *ow, const uint8_t *rom) {
+  // onewire_write(ow, 0x55);
+  onewire_write_bits(ow->pin, 0x55, 8, owDefaultPower);
+  for (int i = 0; i < 8; i++) {
+    // onewire_write(ow, rom[i]);
+    onewire_write_bits(ow->pin, rom[i], 8, owDefaultPower);
+  }
+}
+
+void onewire_rmt_skip(struct mgos_rmt_onewire *ow) {
+  // onewire_write(ow, 0xCC);
+  onewire_write_bits(ow->pin, 0xCC, 8, owDefaultPower);
+}
+
+void onewire_rmt_search_clean(struct mgos_rmt_onewire *ow) {
+  memset(&ow->sst, 0, sizeof(ow->sst));
+}
+
+bool onewire_rmt_read_bit(struct mgos_rmt_onewire *ow) {
+  uint8_t bit = 0;
+  if (onewire_read_bits(ow->pin, &bit, 1)) {
+    return bit & 0x01;
+  }
+  return false;
+}
+
+uint8_t onewire_rmt_read(struct mgos_rmt_onewire *ow) {
+  uint8_t res = 0;
+  if (onewire_read_bits(ow->pin, &res, 8) != true) {
+    return 0;
+  }
+  return res;
+}
+
+void onewire_rmt_read_bytes(struct mgos_rmt_onewire *ow, uint8_t *buf,
+                            int len) {
+  for (uint16_t i = 0; i < len; i++) {
+    if (onewire_read_bits(ow->pin, buf, 8) != true) {
+      return;  // PLATFORM_ERR;
+    }
+    buf++;
+  }
+}
+
+void onewire_rmt_write_bit(struct mgos_rmt_onewire *ow, int bit) {
+  uint8_t data = 0x01 & bit;
+  onewire_write_bits(ow->pin, data, 1, owDefaultPower);
+}
+
+void onewire_rmt_write(struct mgos_rmt_onewire *ow, const uint8_t data) {
+  onewire_write_bits(ow->pin, data, 8, owDefaultPower);
+}
+
+void onewire_rmt_write_bytes(struct mgos_rmt_onewire *ow, const uint8_t *buf,
+                             int len) {
+  for (uint16_t i = 0; i < len; i++) {
+    if (onewire_write_bits(ow->pin, buf[i], 8, owDefaultPower) != true) {
+      return;  // PLATFORM_ERR;
+    }
+  }
+
+  return;  // PLATFORM_OK;
+}
