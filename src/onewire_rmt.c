@@ -59,11 +59,11 @@ sample code bearing this copyright.
  */
 // https://raw.githubusercontent.com/nodemcu/nodemcu-firmware/dev-esp32/components/platform/onewire.c
 
-#include <stdbool.h>
 #include <mgos.h>
+#include <stdbool.h>
 
-#include "driver/rmt.h"
 #include "driver/gpio.h"
+#include "driver/rmt.h"
 #include "onewire_rmt.h"
 
 // *****************************************************************************
@@ -384,8 +384,8 @@ struct mgos_rmt_onewire *onewire_rmt_create(int pin, int rmt_rx, int rmt_tx) {
 
 void onewire_rmt_close(struct mgos_rmt_onewire *ow) {
   if (NULL != ow) {
-    esp_err_t resRx = rmt_driver_uninstall(ow->rmt_rx);
-    esp_err_t resTx = rmt_driver_uninstall(ow->rmt_tx);
+    /*esp_err_t resRx =*/rmt_driver_uninstall(ow->rmt_rx);
+    /*esp_err_t resTx =*/rmt_driver_uninstall(ow->rmt_tx);
     free((void *) ow);
     ow_rmt.tx = -1;
     ow_rmt.rx = -1;
